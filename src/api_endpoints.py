@@ -30,6 +30,20 @@ async def ask_agent(request: Request) -> str:
     return JSONResponse(content=response_dict)
 
 
+@router.post("/get-most-similar-cocktail")
+async def get_most_similar_cocktail(request: Request) -> str:
+
+    body_dict = await request.json()
+
+    cocktail = body_dict.get("cocktail", "")
+
+    most_similar_cocktail = "Bramble"
+
+    response_dict = {"mostSimilarCocktail": most_similar_cocktail}
+    print(response_dict)
+    return JSONResponse(content=response_dict)
+
+
 
 
 
