@@ -9,7 +9,7 @@ docker build -t cocktailr-backend:latest .
 docker run -p 8080:8080 -it cocktailr-backend:latest
 ```
 
-Then you can call the API like:
+Then you can call the API like (for `ask-agent` route):
 ```bash
 curl --request POST \
   --url http://127.0.0.1:8080/ask-agent \
@@ -19,6 +19,17 @@ curl --request POST \
 	"question": "I have vodka, orange juice, and limes. Which cocktail can I make?"
 }'
 ```
+or like (on GCP, for `get-most-similar-cocktail`):
+```bash
+curl --request POST \
+  --url https://cocktailr-backend-ze4ei6k6ba-wl.a.run.app/get-most-similar-cocktail \
+  --header 'Content-Type: application/json' \
+  --header 'User-Agent: insomnia/9.3.2' \
+  --data '{
+	"cocktail": "Negroni"
+}'
+```
+
 
 
 To deploy it on GCP (example, some of these should be environment variables):
