@@ -1,5 +1,7 @@
 # We <3 consuming cocktails
 
+Add your Google API key to .env file like in .env.example (there's 2 of them and I am not sure which one is being used so add it to both #TeamMLway 😅)
+
 Build docker image and run docker container:
 
 ```bash
@@ -19,7 +21,7 @@ curl --request POST \
 ```
 
 
-To deploy it on GCP:
+To deploy it on GCP (example, some of these should be environment variables):
 ```bash
 gcloud init
 gcloud artifacts repositories create quickstart-docker-repo --repository-format=docker --location=us-west2 --description="Docker repository"
