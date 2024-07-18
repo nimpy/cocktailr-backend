@@ -120,7 +120,6 @@ posthog==3.5.0
 prompt-toolkit==3.0.43
 proto-plus==1.23.0
 protobuf==4.25.3
-psutil==5.9.8
 ptyprocess==0.7.0
 pulsar-client==3.4.0
 pure-eval==0.2.2
@@ -133,7 +132,6 @@ pydeck==0.8.1b0
 Pygments==2.17.2
 pyparsing==3.1.2
 pypdf==4.2.0
-PyPika==0.48.9
 pyproject_hooks==1.0.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1

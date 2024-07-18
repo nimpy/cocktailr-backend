@@ -1,6 +1,10 @@
 import os
 from typing import List
 
+from dotenv import load_dotenv
+
+load_dotenv('.env')
+
 from langchain.memory import ConversationBufferMemory
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_google_genai import (
