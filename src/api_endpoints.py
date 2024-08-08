@@ -8,6 +8,7 @@ from warnings import filterwarnings
 filterwarnings("ignore", category=UserWarning)
 
 from utils import set_up_agent, invoke_agent
+from misc_utils import dict_to_conversation
 
 router = APIRouter()
 
@@ -59,24 +60,15 @@ async def send_message(request: Request) -> str:
     history = body_dict.get("history", [])
     print(history)
 
-    history.append({"sender": "user", "text": new_message})
-    # ic(history)
+    conversation = dict_to_conversation({"newMessage": new_message, "history": history})
+    print(conversation)
 
-    history_string = json.dumps(history)
+    response = invoke_agent(agent, conversation)
+    print(response)
 
-    # docs = retriever.invoke(history_string)
-    # docs = list({doc.metadata["link"]: doc for doc in docs}.values()) # remove duplicates
-
-
-    # qa_chain = RetrievalQA.from_chain_type(
-    #     llm,
-    #     retriever=vectorstore.as_retriever()
-    # )
-    
-    # result = qa_chain({"query": history_string, "context": docs})
-
-    response_dict = {"message": "Lorem ipsum"}
+    response_dict = {"message": response}
     print(response_dict)
+
     return JSONResponse(content=response_dict)
 
 

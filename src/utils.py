@@ -21,9 +21,11 @@ from langchain.tools.render import render_text_description
 
 from langchain.agents import tool
 
+from cocktails import COCKTAILS, ingredient_match
+
 
 @tool
-def get_most_similar_cocktail(cocktail: str) -> str:
+def get_most_similar_cocktail(cocktail_name: str) -> str:
     """Returns the most similar cocktail to the input cocktail."""
     return "Negroni"
 
@@ -31,13 +33,24 @@ def get_most_similar_cocktail(cocktail: str) -> str:
 @tool
 def get_list_of_ingredients_for_a_cocktail(cocktail_name: str) -> str:
     """Returns the list of ingredients for a cocktail."""
-    return "ice, ice, baby"
+    for cocktail in COCKTAILS:
+        if cocktail['name'].lower() == cocktail_name.lower():
+            ingredients = [f"{ing.get('quantity', '')} {ing.get('unit', '')} {ing['name']}".strip() 
+                           for ing in cocktail['ingredients']]
+            return "\n".join(ingredients)
+    return ""
+
 
 
 @tool
 def get_list_of_ingredients_and_recipe_for_a_cocktail(cocktail_name: str) -> str:
     """Given a cocktail name, returns the list of ingredients for that cocktail and the recipe how to prepare it."""
-    return "Ingredients: ice, ice, baby. Recipe: Mix it all together."
+    for cocktail in COCKTAILS:
+        if cocktail['name'].lower() == cocktail_name.lower():
+            ingredients = [f"{ing.get('quantity', '')} {ing.get('unit', '')} {ing['name']}".strip() 
+                           for ing in cocktail['ingredients']]
+            return f"Ingredients:\n{', '.join(ingredients)}\n\nRecipe:\n{cocktail['recipe']}"
+    return ""
 
 
 @tool
@@ -48,7 +61,21 @@ def get_alternatives_for_ingredient(ingredient: str) -> str:
 @tool
 def get_cocktail_given_a_list_of_ingredients(ingredients: str) -> str:
     """Given ingredients, returns one cocktail that can be made from the input ingredients."""
-    return "Negroni"
+    available_ingredients = [ing.strip() for ing in ingredients.split(',')]
+    matching_cocktails = []
+    
+    for cocktail in COCKTAILS:
+        cocktail_ingredients = [ing['name'] for ing in cocktail['ingredients']]
+        if ingredient_match(available_ingredients, cocktail_ingredients):
+            matching_cocktails.append(cocktail['name'])
+        if "bramble" in cocktail['name'].lower():
+            print(cocktail_ingredients)
+            print(available_ingredients)
+    
+    if matching_cocktails:
+        return f"Matching cocktails: {', '.join(matching_cocktails)}"
+    else:
+        return "No cocktails found with those ingredients."
 
 
 
@@ -102,7 +129,7 @@ def invoke_agent(agent_executor, input_text: str) -> str:
 
 
 def main():
-    question = "Which cocktail can I make, given that I only have vodka and water in my fridge?"
+    question = "What can I make if I only have vodka, whisky, gin, simple, and coca cola? I also have lemons, oranges and blackberries?"
     agent = set_up_agent()
     agent.invoke({"input": question})["output"]
 
