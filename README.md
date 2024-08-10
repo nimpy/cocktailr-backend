@@ -22,12 +22,18 @@ curl --request POST \
 or like (on GCP, for `get-most-similar-cocktail`):
 ```bash
 curl --request POST \
-  --url https://cocktailr-backend-ze4ei6k6ba-wl.a.run.app/get-most-similar-cocktail \
+  --url https://cocktailr-backend-ze4ei6k6ba-wl.a.run.app/send-message \
   --header 'Content-Type: application/json' \
   --header 'User-Agent: insomnia/9.3.2' \
   --data '{
-	"cocktail": "Negroni"
-}'
+	"newMessage": "How can I make it?",
+	"history": [
+		{"sender": "agent", "text": "Hi! I'\''m Brina, your personal cocktail bartender. How can I help you today?"},
+		{"sender": "user", "text": "What cocktail is most similar to Negroni?"},
+		{"sender": "agent", "text": "The most similar cocktail to Negroni is Quill."}
+	]
+}
+'
 ```
 
 
