@@ -21,13 +21,43 @@ from langchain.tools.render import render_text_description
 
 from langchain.agents import tool
 
-from cocktails import COCKTAILS, ingredient_match
+from cocktails import COCKTAILS, get_cocktail_by_name, get_cocktail_embedding, compute_similarity, ingredient_match
 
 
 @tool
 def get_most_similar_cocktail(cocktail_name: str) -> str:
     """Returns the most similar cocktail to the input cocktail."""
-    return "Negroni"
+    input_cocktail = get_cocktail_by_name(cocktail_name)
+    if not input_cocktail:
+        return f"Cocktail '{cocktail_name}' not found."
+    print(f"Fetched cocktail: {input_cocktail.get('name')}")
+
+    input_embedding = get_cocktail_embedding(input_cocktail['id'])
+    if not input_embedding:
+        return f"Embedding for '{cocktail_name}' not found."
+
+    max_similarity = -1
+    most_similar_cocktail = None
+
+    for cocktail in COCKTAILS:
+        if cocktail['id'] == input_cocktail['id']:
+            continue  # Skip the input cocktail itself
+
+        current_embedding = get_cocktail_embedding(cocktail['id'])
+        if not current_embedding:
+            continue  # Skip cocktails without embeddings
+
+        similarity = compute_similarity(input_embedding, current_embedding)
+
+        if similarity > max_similarity:
+            max_similarity = similarity
+            most_similar_cocktail = cocktail
+
+    if most_similar_cocktail:
+        return f"The most similar cocktail to '{cocktail_name}' is '{most_similar_cocktail['name']}' with a similarity of {max_similarity:.4f}"
+    else:
+        return f"No similar cocktails found for '{cocktail_name}'."
+
 
 
 @tool
