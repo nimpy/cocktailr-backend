@@ -86,6 +86,7 @@ def get_list_of_ingredients_and_recipe_for_a_cocktail(cocktail_name: str) -> str
 @tool
 def get_alternatives_for_ingredient(ingredient: str) -> str:
     """Given an ingredient, returns a list of alternatives for that ingredient."""
+    # TODO add get_alternatives_for_ingredient to tools list
     return "Vodka, Rum"
 
 @tool
@@ -126,7 +127,7 @@ def set_up_agent():
         },
     )
 
-    tools = [get_most_similar_cocktail, get_list_of_ingredients_for_a_cocktail, get_list_of_ingredients_and_recipe_for_a_cocktail, get_alternatives_for_ingredient, get_cocktail_given_a_list_of_ingredients]
+    tools = [get_most_similar_cocktail, get_list_of_ingredients_for_a_cocktail, get_list_of_ingredients_and_recipe_for_a_cocktail, get_cocktail_given_a_list_of_ingredients]
 
     agent_prompt = hub.pull("mikechan/gemini")
 
