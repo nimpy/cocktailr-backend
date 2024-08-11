@@ -178,6 +178,8 @@ def compute_similarity(embedding1: List[float], embedding2: List[float]) -> floa
 
 
 INGREDIENTS = []
+INGREDIENT_EMBEDDINGS = {}
+
 
 def load_ingredients():
     global INGREDIENTS
@@ -209,8 +211,31 @@ def clean_ingredient_name(name: str) -> str:
     
     return name
 
-# Call this function after COCKTAILS is populated
+def calculate_ingredient_embeddings():
+    global INGREDIENT_EMBEDDINGS
+    embeddings_dir = 'embeddings_ingredients'
+    
+    if not os.path.exists(embeddings_dir):
+        os.makedirs(embeddings_dir)
+
+    for ingredient in INGREDIENTS:
+        embedding_file = f"{embeddings_dir}/{ingredient.replace(' ', '_')}.npy"
+        
+        if os.path.exists(embedding_file):
+            # Load existing embedding
+            INGREDIENT_EMBEDDINGS[ingredient] = np.load(embedding_file).tolist()
+        else:
+            if ingredient != '':
+                # Calculate and save new embedding
+                embedding = get_embedding(ingredient)
+                INGREDIENT_EMBEDDINGS[ingredient] = embedding
+                np.save(embedding_file, embedding)
+
+    print(f"Loaded/calculated embeddings for {len(INGREDIENT_EMBEDDINGS)} ingredients.")
+
+
 load_ingredients()
+calculate_ingredient_embeddings()
 
 
 if __name__ == '__main__':

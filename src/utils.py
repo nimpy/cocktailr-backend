@@ -1,6 +1,6 @@
 import os
 from typing import List
-
+from difflib import get_close_matches
 from dotenv import load_dotenv
 
 load_dotenv('.env')
@@ -17,11 +17,11 @@ from langchain import hub
 from langchain.agents.format_scratchpad import format_log_to_str
 from langchain.agents.output_parsers import ReActSingleInputOutputParser
 from langchain.tools.render import render_text_description
-
-
 from langchain.agents import tool
+from sklearn.metrics.pairwise import cosine_similarity
 
 from cocktails import COCKTAILS, get_cocktail_by_name, get_cocktail_embedding, compute_similarity, ingredient_match
+from cocktails import INGREDIENTS, INGREDIENT_EMBEDDINGS
 
 
 @tool
@@ -84,10 +84,47 @@ def get_list_of_ingredients_and_recipe_for_a_cocktail(cocktail_name: str) -> str
 
 
 @tool
-def get_alternatives_for_ingredient(ingredient: str) -> str:
-    """Given an ingredient, returns a list of alternatives for that ingredient."""
-    # TODO add get_alternatives_for_ingredient to tools list
-    return "Vodka, Rum"
+def get_alternatives_for_ingredient(ingredient: str, num_alternatives: int = 5) -> str:
+    """Given an ingredient, returns a human-readable string of alternatives for that ingredient."""
+    
+    # First, try to find an exact match (case-insensitive)
+    ingredient = ingredient.lower()
+    exact_match = next((ing for ing in INGREDIENTS if ing.lower() == ingredient), None)
+    
+    if not exact_match:
+        # If no exact match, try to find a close match
+        close_matches = get_close_matches(ingredient, INGREDIENTS, n=1, cutoff=0.6)
+        if not close_matches:
+            return f"I couldn't find any ingredient matching '{ingredient}' in our database."
+        exact_match = close_matches[0]
+    
+    # Get the embedding for the matched ingredient
+    base_embedding = INGREDIENT_EMBEDDINGS.get(exact_match)
+    if not base_embedding:
+        return f"I found '{exact_match}' in our database, but I don't have enough information to suggest alternatives."
+    
+    # Calculate similarities with all other ingredients
+    similarities = []
+    for ing, emb in INGREDIENT_EMBEDDINGS.items():
+        if ing != exact_match:
+            similarity = cosine_similarity([base_embedding], [emb])[0][0]
+            similarities.append((ing, similarity))
+    
+    # Sort by similarity (descending) and get top alternatives
+    alternatives = sorted(similarities, key=lambda x: x[1], reverse=True)[:num_alternatives]
+    
+    # Transform alternatives into a human-readable string
+    if alternatives:
+        response = f"For '{exact_match}', you could try these alternatives:\n"
+        for i, (alt, sim) in enumerate(alternatives, 1):
+            response += f"{i}. {alt.capitalize()}\n"
+        response += "\nThese ingredients have similar properties or uses in cocktails."
+    else:
+        response = f"I couldn't find any suitable alternatives for '{exact_match}'."
+    
+    return response
+
+
 
 @tool
 def get_cocktail_given_a_list_of_ingredients(ingredients: str) -> str:
@@ -127,7 +164,7 @@ def set_up_agent():
         },
     )
 
-    tools = [get_most_similar_cocktail, get_list_of_ingredients_for_a_cocktail, get_list_of_ingredients_and_recipe_for_a_cocktail, get_cocktail_given_a_list_of_ingredients]
+    tools = [get_most_similar_cocktail, get_list_of_ingredients_for_a_cocktail, get_list_of_ingredients_and_recipe_for_a_cocktail, get_cocktail_given_a_list_of_ingredients, get_alternatives_for_ingredient]
 
     agent_prompt = hub.pull("mikechan/gemini")
 
