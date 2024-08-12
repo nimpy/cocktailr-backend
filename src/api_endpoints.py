@@ -9,7 +9,7 @@ filterwarnings("ignore", category=UserWarning)
 
 from utils import set_up_agent, invoke_agent
 from misc_utils import dict_to_conversation
-from gemini_utils import call_gemini
+from gemini_utils import call_gemini, let_gemini_rephrase
 
 router = APIRouter()
 
@@ -67,16 +67,18 @@ async def send_message(request: Request) -> str:
     response = invoke_agent(agent, conversation)
     print(response)
 
-    gemini_response = None
     if response.startswith("I'm sorry, "):
         print("Calling Gemini!")
         gemini_response = await call_gemini(conversation)
-    
-
-    if gemini_response is not None and gemini_response != "":
-        response_dict = {"message": gemini_response}
+        if gemini_response is not None and gemini_response != "":
+            response_dict = {"message": gemini_response}
+        else:
+            response_dict = {"message": response}
     else:
-        response_dict = {"message": response}
+        print("Letting Gemini rephrase!")
+        snarky_response = await let_gemini_rephrase(conversation, response)
+        response_dict = {"message": snarky_response}
+
     print(response_dict)
 
     return JSONResponse(content=response_dict)
