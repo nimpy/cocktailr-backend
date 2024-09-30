@@ -1,52 +1,18 @@
-import json
-import asyncio
-from fastapi import APIRouter, Request
+from typing import List, Dict
+from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
-import logging
 
 from warnings import filterwarnings
+
+from utils import set_up_agent, invoke_agent, sassify_last_response
+from misc_utils import dict_to_messages
+from cocktails import COCKTAILS
+
+
 filterwarnings("ignore", category=UserWarning)
-
-from utils import set_up_agent, invoke_agent
-from misc_utils import dict_to_conversation
-from gemini_utils import call_gemini, let_gemini_rephrase
-
 router = APIRouter()
 
-
 agent = set_up_agent()
-
-@router.post("/ask-agent")
-async def ask_agent(request: Request) -> str:
-    
-    body_dict = await request.json()
-
-    question = body_dict.get("question", "")
-    print(question)
-
-    response = invoke_agent(agent, question)
-    print(response)
-
-    response_dict = {"message": response}
-    print(response_dict)
-    return JSONResponse(content=response_dict)
-
-
-@router.post("/get-most-similar-cocktail")
-async def get_most_similar_cocktail(request: Request) -> str:
-
-    body_dict = await request.json()
-
-    cocktail = body_dict.get("cocktail", "")
-
-    most_similar_cocktail = "Bramble"
-
-    response_dict = {"mostSimilarCocktail": most_similar_cocktail}
-    print(response_dict)
-    return JSONResponse(content=response_dict)
-
-
-
 
 
 
@@ -56,30 +22,22 @@ async def send_message(request: Request) -> str:
     body_dict = await request.json()
 
     new_message = body_dict.get("newMessage", "")
-    print(new_message)
+    print("USER:", new_message)
 
-    history = body_dict.get("history", [])
-    print(history)
+    messages = dict_to_messages(body_dict)
+ 
+    response = invoke_agent(agent, messages)
+    print("AGENT:", response)
 
-    conversation = dict_to_conversation({"newMessage": new_message, "history": history})
-    print(conversation)
+    conversation_dict = {
+        "user": new_message,
+        "agent": response,
+    }
 
-    response = invoke_agent(agent, conversation)
-    print(response)
+    sassy_response = sassify_last_response(conversation_dict)
+    print("SASSY AGENT:", sassy_response)
 
-    if response.startswith("I'm sorry, "):
-        print("Calling Gemini!")
-        gemini_response = await call_gemini(conversation)
-        if gemini_response is not None and gemini_response != "":
-            response_dict = {"message": gemini_response}
-        else:
-            response_dict = {"message": response}
-    else:
-        print("Letting Gemini rephrase!")
-        snarky_response = await let_gemini_rephrase(conversation, response)
-        response_dict = {"message": snarky_response}
-
-    print(response_dict)
+    response_dict = {"message": sassy_response}
 
     return JSONResponse(content=response_dict)
 
@@ -87,6 +45,18 @@ async def send_message(request: Request) -> str:
 @router.get("/health")
 async def health(request: Request) -> str:
 
-    return "Healthy"
+    return "Not great, if you're drinking cocktails all the time."
 
+
+@router.get("/cocktails")
+async def get_all_cocktails() -> List[Dict]:
+    return COCKTAILS
+
+
+@router.get("/cocktails/{id}")
+async def get_cocktail_by_id(id: int) -> Dict:
+    for cocktail in COCKTAILS:
+        if cocktail['id'] == id:
+            return cocktail
+    raise HTTPException(status_code=404, detail="Cocktail not found")
 

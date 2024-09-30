@@ -1,28 +1,22 @@
+import json
 import os
-from typing import List
+from openai import OpenAI
 from difflib import get_close_matches
 from dotenv import load_dotenv
 
 load_dotenv('.env')
 
-from langchain.memory import ConversationBufferMemory
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_google_genai import (
-    ChatGoogleGenerativeAI,
-    HarmBlockThreshold,
-    HarmCategory,
-)
-from langchain.agents import AgentExecutor
-from langchain import hub
-from langchain.agents.format_scratchpad import format_log_to_str
-from langchain.agents.output_parsers import ReActSingleInputOutputParser
-from langchain.tools.render import render_text_description
+from langchain_openai import ChatOpenAI
+from langgraph.prebuilt import create_react_agent
 from langchain.agents import tool
 from sklearn.metrics.pairwise import cosine_similarity
 
 from cocktails import COCKTAILS, get_cocktail_by_name, get_cocktail_embedding, compute_similarity, ingredient_match
 from cocktails import INGREDIENTS, INGREDIENT_EMBEDDINGS
 
+
+
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 @tool
 def get_most_similar_cocktail(cocktail_name: str) -> str:
@@ -149,51 +143,44 @@ def get_cocktail_given_a_list_of_ingredients(ingredients: str) -> str:
 
 
 def set_up_agent():
-
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-pro",
-        convert_system_message_to_human=True,
-        handle_parsing_errors=True,
-        temperature=0.0,
-        max_tokens=None,
-        safety_settings = {
-            HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-            HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_ONLY_HIGH,
-        },
-    )
-
+    model = ChatOpenAI(model="gpt-4")
     tools = [get_most_similar_cocktail, get_list_of_ingredients_for_a_cocktail, get_list_of_ingredients_and_recipe_for_a_cocktail, get_cocktail_given_a_list_of_ingredients, get_alternatives_for_ingredient]
-
-    agent_prompt = hub.pull("mikechan/gemini")
-
-    prompt = agent_prompt.partial(
-        tools=render_text_description(tools),
-        tool_names=", ".join([t.name for t in tools]),
-    )
-    llm_with_stop = llm.bind(stop=["\nObservation"])
-
-    memory = ConversationBufferMemory(memory_key="chat_history")
-
-    agent = (
-        {
-            "input": lambda x: x["input"],
-            "agent_scratchpad": lambda x: format_log_to_str(x["intermediate_steps"]),
-            "chat_history": lambda x: x["chat_history"],
-        }
-        | prompt
-        | llm_with_stop
-        | ReActSingleInputOutputParser()
-    )
-
-    agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True, memory=memory, handle_parsing_errors="Check your output and make sure it conforms, use the Action/Action Input syntax",)
+    agent_executor = create_react_agent(model, tools)
     return agent_executor
 
 
+def invoke_agent(agent_executor, messages) -> str:
+    agent_invocation = agent_executor.invoke(messages)
+    print("AGENT INVOCATION:", agent_invocation)
+    return agent_invocation["messages"][-1].content
 
-def invoke_agent(agent_executor, input_text: str) -> str:
-    return agent_executor.invoke({"input": input_text})["output"]
+
+def openai_call_wrapper_return_json(messages):
+    response = client.chat.completions.create(
+        model="gpt-4o",
+        response_format={ "type": "json_object" },
+        messages=messages,
+        temperature=0.0,
+    )
+    try:
+        response_dict = json.loads(response.choices[0].message.content)
+    except json.decoder.JSONDecodeError as e:
+        print("There was an error with parsing the json response in openai_call_wrapper_return_json(). The response was:", response.choices[0].message.content)
+        raise e
+    return response_dict
+
+
+def sassify_last_response(conversation_dict):
+    prompt = f"""You have the following conversation between a user and an agent:
+{json.dumps(conversation_dict, indent=2)}
+Modify the last agent message to make it snarky and sassy. The agent should tease the user in a flirty way, but the message should retain the information from the original message. Output the modified message in json format like:
+{{"agent": "Honey, with that inventory, a Gimlet is about all you can make.  Unless you consider a Screwdriver with a splash of sadness a viable option.  🍸 😉"}}
+"""
+    
+    messages = [{"role": "user", "content": prompt}]
+    response = openai_call_wrapper_return_json(messages)
+    
+    return response.get('agent', '')
 
 
 def main():
