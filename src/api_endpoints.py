@@ -1,10 +1,10 @@
-from typing import List, Dict
+from typing import List, Dict, Optional
 from fastapi import APIRouter, Request, HTTPException
 from fastapi.responses import JSONResponse
-
+from pydantic import BaseModel
 from warnings import filterwarnings
 
-from utils import set_up_agent, invoke_agent, sassify_last_response
+from utils import set_up_agent, invoke_agent, sassify_last_response, get_sassy_image_response
 from misc_utils import dict_to_messages
 from cocktails import COCKTAILS
 
@@ -60,3 +60,18 @@ async def get_cocktail_by_id(id: int) -> Dict:
             return cocktail
     raise HTTPException(status_code=404, detail="Cocktail not found")
 
+
+class ImageUpload(BaseModel):
+    newMessage: Optional[str] = None
+    image: str
+
+
+@router.post("/send-image")
+async def send_image(upload: ImageUpload):
+
+    if upload.newMessage:
+        response = get_sassy_image_response(upload.newMessage, upload.image)
+    else:
+        response = get_sassy_image_response("I would like to make a cocktail. What could I make with this?", upload.image)
+
+    return {"message": response}
