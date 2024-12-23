@@ -1,5 +1,6 @@
+import os
 from typing import List, Dict, Optional
-from fastapi import APIRouter, Request, HTTPException
+from fastapi import APIRouter, Request, HTTPException, Header, Depends
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from warnings import filterwarnings
@@ -14,11 +15,16 @@ router = APIRouter()
 
 agent = set_up_agent()
 
+VERSION = "20241223_1700"
+
+
+async def valid_api_key(x_cocktailr_key: str = Header(default=None)):
+    if x_cocktailr_key != os.getenv("AUTH_TOKEN"):
+        raise HTTPException(status_code=400, detail='')
 
 
 @router.post("/send-message")
-async def send_message(request: Request) -> str:
-
+async def send_message(request: Request, api_key: str = Depends(valid_api_key)) -> str:
     body_dict = await request.json()
 
     new_message = body_dict.get("newMessage", "")
@@ -43,18 +49,17 @@ async def send_message(request: Request) -> str:
 
 
 @router.get("/health")
-async def health(request: Request) -> str:
-
-    return "Not great, if you're drinking cocktails all the time."
+async def health(api_key: str = Depends(valid_api_key)) -> str :
+    return f"Not great, if you're drinking cocktails all the time. (Version: {VERSION})"
 
 
 @router.get("/cocktails")
-async def get_all_cocktails() -> List[Dict]:
+async def get_all_cocktails(api_key: str = Depends(valid_api_key)) -> List[Dict]:
     return COCKTAILS
 
 
 @router.get("/cocktails/{id}")
-async def get_cocktail_by_id(id: int) -> Dict:
+async def get_cocktail_by_id(id: int, api_key: str = Depends(valid_api_key)) -> Dict:
     for cocktail in COCKTAILS:
         if cocktail['id'] == id:
             return cocktail
@@ -67,7 +72,7 @@ class ImageUpload(BaseModel):
 
 
 @router.post("/send-image")
-async def send_image(upload: ImageUpload):
+async def send_image(upload: ImageUpload, api_key: str = Depends(valid_api_key)):
 
     if upload.newMessage:
         response = get_sassy_image_response(upload.newMessage, upload.image)
